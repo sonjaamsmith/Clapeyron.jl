@@ -25,6 +25,8 @@ bubble_pressure(model,T,z,FugBubblePressure(y0 = = [0.6,0.4], p0 = 5e4)) #using 
 ```
 """
 abstract type ThermodynamicMethod end
+Base.show(io::IO,::MIME"text/plain",x::ThermodynamicMethod) = show_as_namedtuple(io,x)
+Base.show(io::IO,x::ThermodynamicMethod) = show_as_namedtuple(io,x)
 
 function NLSolvers.NEqOptions(method::ThermodynamicMethod)
     return NEqOptions(f_limit = method.f_limit,
@@ -34,6 +36,18 @@ function NLSolvers.NEqOptions(method::ThermodynamicMethod)
 end
 
 mw(model::EoSModel) = model.params.Mw.values
+
+group_Mw(model::EoSModel) = group_Mw(model.params.Mw.values,model.groups)
+function group_Mw(Mw_gc::SingleParam,groups::GroupParam)
+    n = length(groups.components)
+    mw_comp = zeros(eltype(Mw_gc.values),n)
+    v = groups.n_flattenedgroups
+    mw_gc = Mw_gc.values
+    for i in 1:n
+        mw_comp[i] = dot(mw_gc,v[i])
+    end
+    return mw_comp
+end
 
 function group_molecular_weight(groups::GroupParameter,mw,z = @SVector [1.])
     res = zero(first(z))
@@ -45,9 +59,13 @@ function group_molecular_weight(groups::GroupParameter,mw,z = @SVector [1.])
     return 0.001*res/sum(z)
 end
 
-comp_molecular_weight(mw,z = @SVector [1.]) = 0.001*dot(mw,z)
+comp_molecular_weight(mw,z = SA[1.0]) = 0.001*dot(mw,z)
+molecular_weight(model) = molecular_weight(model,SA[1.0])
+molecular_weight(model::EoSModel,z) = __molecular_weight(model,z)
+molecular_weight(mw::AbstractVector,z) = comp_molecular_weight(mw,z)
+molecular_weight(mw::SingleParam,z) = comp_molecular_weight(mw.values,z)
 
-function molecular_weight(model::EoSModel,z=SA[1.0])
+function __molecular_weight(model,z)
     MW = mw(model)
     if has_groups(model)
         return group_molecular_weight(model.groups,MW,z)
@@ -263,7 +281,6 @@ function init_preferred_method(method,model) end
 Returns a matrix of "k-values" binary interaction parameters used by the input `model`. Returns `nothing` if the model cannot return the k-values matrix.
 In the case of multiple k-values (as is the case in T-dependent values, i.e: k(T) = k1 + k2*T), it will return a tuple of matrices corresponding to each term in the k-value expression.
 Note that some models do not store the k-value matrix directly, but they contain the value in an indirect manner. for example, cubic EoS store `a[i,j] = f(a[i],a[j],k[i,j])`, where `f` depends on the mixing rule.
-
 """
 get_k(model::EoSModel) = nothing
 
@@ -301,11 +318,13 @@ include("initial_guess.jl")
 include("differentials.jl")
 include("VT.jl")
 include("isochoric.jl")
-include("phase.jl")
 include("fugacity_coefficient.jl")
 include("property_solvers/property_solvers.jl")
 include("tpd.jl")
 include("stability.jl")
 include("pT.jl")
 include("property_solvers/Tproperty.jl")
+include("property_solvers/Pproperty.jl")
+include("PH.jl")
+include("PS.jl")
 include("property_solvers/spinodal.jl")

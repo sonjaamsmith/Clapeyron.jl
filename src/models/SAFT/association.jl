@@ -217,9 +217,6 @@ end
 
 function assoc_site_matrix(model,V,T,z,data = nothing,delta = @f(__delta_assoc,data))
     options = assoc_options(model)
-    if !options.dense
-        @warn "using sparse matrices for association is deprecated."
-    end
     return dense_assoc_site_matrix(model,V,T,z,data,delta)
 end
 
@@ -659,7 +656,12 @@ end
 
 #helper function to get the sites. in almost all cases, this is model.sites
 #but SAFTgammaMie uses model.vrmodel.sites instead
+"""
+    getsites(model::EoSModel)
 
+returns the `SiteParam` used in association calculations for the input `model`, if any. Fails if not available. to check if a model has sites, use `has_sites`
+
+"""
 getsites(model) = model.sites
 
 function a_assoc_impl(model::EoSModel, V, T, z, X, Δ)
@@ -792,15 +794,15 @@ function X(model::DAPTModel, V, T, z)
 end
 ```
 """
-macro assoc_loop(Xold,Xnew,expr)
+macro assoc_loop(Xold::Symbol,Xnew::Symbol,expr)
     return quote
-        __sites = getsites(model)
+        __sites = Clapeyron.getsites(model)
         idxs = __sites.n_sites.p
-        X0 = fill(one(V+T+first(z)),length(__sites.n_sites.v))
+        X0 = fill(one(Base.promote_eltype(model,V,T,z)),length(__sites.n_sites.v))
 
         function x_assoc_iter!(__X_new_i,__X_old_i)
-            $Xold = PackedVofV(idxs,__X_old_i)
-            $Xnew = PackedVofV(idxs,__X_old_i)
+            $Xold = Clapeyron.PackedVofV(idxs,__X_old_i)
+            $Xnew = Clapeyron.PackedVofV(idxs,__X_new_i)
             $expr
             return __X_new_i
         end

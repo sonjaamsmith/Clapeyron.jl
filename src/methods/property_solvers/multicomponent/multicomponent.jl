@@ -118,7 +118,7 @@ function μp_equality(model::EoSModel, F, PT::TPspec, Base.@specialize(v), Base.
             μ1i = Fj[i]
             μji = μj[i]
             Δuᵣ = μ1i - μji
-            Δu = Δuᵣ*RTinv + log(vj*w1[i]/(v1*wj[i]))
+            Δu = Δuᵣ*RTinv + log(vj) + log(w1[i]) -log(v1) - log(wj[i])
             Fj[i] = Δu
         end
     end
@@ -161,7 +161,7 @@ function μp_equality2(models::NTuple{2,M}, F, PT::TPspec, v, w, short_view) whe
         μ_long_i = F[i]
         μ_short_i = μ_short[i]
         Δuᵣ = (μ_long_i - μ_short_i)
-        Δμ = Δuᵣ*RTinv + log(v_short*x_long_view[i]/(v_long*x_short[i]))
+        Δμ = Δuᵣ*RTinv + log(v_short) + log(x_long_view[i])  - log(v_long) - log(x_short[i])
         F[i] = Δμ*RT⁻¹
     end
     F[n_short+1] = (p_long-p_short)*p⁻¹
@@ -195,7 +195,7 @@ function wilson_k_values!(K,model::EoSModel,p,T,crit = nothing)
         Tc,pc,_ = crit[i]
         ps = first(saturation_pressure(pure_i,0.7*Tc))
         ω = -log10(ps/pc) - 1.0
-        K[i] = exp(log(pc/p)+5.373*(1+ω)*(1-Tc/T))
+        K[i] = exp(log(pc/p)+5.37269855031944*(1+ω)*(1-Tc/T))
     end
     return K
 end
@@ -257,7 +257,7 @@ include("VLLE.jl")
 include("crit_mix.jl")
 include("UCEP.jl")
 include("UCST_mix.jl")
-include("tp_flash.jl")
+include("flash.jl")
 include("krichevskii_parameter.jl")
 include("solids/sle_solubility.jl")
 include("solids/slle_solubility.jl")

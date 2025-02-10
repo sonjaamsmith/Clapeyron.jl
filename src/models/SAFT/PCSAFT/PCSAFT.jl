@@ -97,6 +97,12 @@ function data(model::PCSAFTModel,V,T,z)
     return (_d,ζ0,ζ1,ζ2,ζ3,m̄)
 end
 
+#unpacks packing_fraction from data
+function packing_fraction(model::PCSAFTModel,_data::Tuple)
+    _,_,_,_,η,_ = _data
+    return η
+end
+
 function a_hc(model::PCSAFTModel, V, T, z,_data=@f(data))
     dii,ζ0,ζ1,ζ2,ζ3,m̄ = _data
     m = model.params.segment.values
@@ -104,7 +110,11 @@ function a_hc(model::PCSAFTModel, V, T, z,_data=@f(data))
     c1 = 1/(1-ζ3)
     c2 = 3ζ2/(1-ζ3)^2
     c3 = 2ζ2^2/(1-ζ3)^3
-    a_hs = bmcs_hs(ζ0,ζ1,ζ2,ζ3)
+    if !iszero(ζ3)
+        a_hs = bmcs_hs(ζ0,ζ1,ζ2,ζ3)
+    else
+        a_hs = @f(bmcs_hs_zero_v,dii)
+    end
     res = zero(a_hs)
     for i ∈ @comps
         dᵢ = dii[i]
@@ -191,11 +201,12 @@ function I(model::PCSAFTModel, V, T, z, n, _data=@f(data))
     res = zero(η)
     m̄1 = (m̄-1)/m̄
     m̄2 = (m̄-1)/m̄*(m̄-2)/m̄
+    ηi = one(η)
     @inbounds for i ∈ 1:length(corr)
-        ii = i-1 
         corr1,corr2,corr3 = corr[i]
         ki = corr1 + m̄1*corr2 + m̄2*corr3
-        res +=ki*η^ii
+        res += ki*ηi
+        ηi *= η
     end
     return res
 end

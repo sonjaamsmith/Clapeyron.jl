@@ -2,11 +2,26 @@ struct EoSVectorParam{T} <: EoSModel
     components::Vector{String}
     model::T
     pure::Vector{T}
+    reference_state::Union{Nothing,ReferenceState}
 end
 
 function EoSVectorParam(model::EoSModel,components = model.components)
     pure = split_model(model,1:length(components))
-    return EoSVectorParam(components,model,pure)
+    if has_reference_state(model)
+        ref = nothing
+    else
+        ref = ReferenceState()
+    end
+    return EoSVectorParam(components,model,pure,ref)
+end
+
+saturation_model(model::EoSVectorParam) = saturation_model(model.model)
+a_res(model::EoSVectorParam,V,T,z) = a_res(model.model,V,T,z)
+a_res(model::EoSVectorParam,V,T,z,data) = a_res(model.model,V,T,z,data)
+Rgas(model::EoSVectorParam) = Rgas(model.model)
+molecular_weight(model::EoSVectorParam,z) = molecular_weight(model.model,z)
+function eos_impl(model::EoSVectorParam,V,T,z)
+    return Rgas(model)*sum(z)*T*a_eos(model.model,V,T,z) + reference_state_eval(model,V,T,z)
 end
 
 Base.getindex(x::EoSVectorParam,I) = x.pure[I]
@@ -23,7 +38,12 @@ end
 function init_puremodel(model::EoSModel,components,userlocations,verbose)
     _components = format_components(components)
     pure = split_model(model,1:length(_components))
-    return EoSVectorParam(_components,model,pure)
+    if has_reference_state(model)
+        ref = nothing
+    else
+        ref = ReferenceState()
+    end
+    return EoSVectorParam(_components,model,pure,ref)
 end
 
 function recombine_impl!(model::EoSVectorParam)
@@ -36,18 +56,24 @@ function recombine_impl!(model::EoSVectorParam)
     return model
 end
 
-function saturation_pressure(model::EoSVectorParam,T::Real,method::SaturationMethod)
-    return saturation_pressure(model.model,T,method)
+function PT_property(model::EoSVectorParam,p,T,z,phase,threaded,vol0,f::F,::Val{UseP}) where {F,UseP}
+    v = volume(model.model,p,T,z;phase,threaded,vol0)
+    if UseP
+        return f(model,v,T,z,p)
+    else
+        return f(model,v,T,z)
+    end
 end
 
-function saturation_temperature(model::EoSVectorParam,T::Real,method::SaturationMethod)
-    return saturation_temperature(model.model,T,method)
+function reference_state(model::EoSVectorParam)
+    original_ref = reference_state(model.model)
+    if original_ref == nothing
+        return model.reference_state
+    else
+        return original_ref
+    end
 end
 
-function init_preferred_method(method::typeof(saturation_pressure),model::EoSVectorParam,kwargs)
-    return init_preferred_method(method,model.model,kwargs)
-end
-
-function init_preferred_method(method::typeof(saturation_temperature),model::EoSVectorParam,kwargs)
-    return init_preferred_method(method,model.model,kwargs)
+function volume_impl(model::EoSVectorParam,p,T,z,phase,threaded,vol0)
+    return volume_impl(model.model,p,T,z,phase,threaded,vol0)
 end

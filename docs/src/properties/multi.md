@@ -39,6 +39,7 @@ Clapeyron.eutectic_point
 ```
 
 ### Bubble/Dew methods
+
 ```@docs
 Clapeyron.ChemPotBubblePressure
 Clapeyron.FugBubblePressure
@@ -79,3 +80,19 @@ Clapeyron.MCFlashJL
 Clapeyron.numphases
 Clapeyron.supports_reduction
 ```
+
+## General Flash
+```
+Clapeyron.FlashResult
+Clapeyron.FlashData
+Clapeyron.FlashSpecifications
+Clapeyron.xy_flash
+Clapeyron.GeneralizedXYFlash
+Clapeyron.ph_flash
+Clapeyron.ps_flash
+Clapeyron.qt_flash
+Clapeyron.qp_flash
+Clapeyron.ts_flash
+Clapeyron.vt_flash
+```
+

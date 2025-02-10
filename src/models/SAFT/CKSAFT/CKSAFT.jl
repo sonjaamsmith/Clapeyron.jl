@@ -111,13 +111,18 @@ end
 function a_hs(model::CKSAFTModel, V, T, z,_data = @f(data))
     _d, m̄, ζi, Σz = _data
     ζ0,ζ1,ζ2,ζ3 = ζi
-    return bmcs_hs(ζ0,ζ1,ζ2,ζ3)
+    if !iszero(ζ3)
+        _a_hs = bmcs_hs(ζ0,ζ1,ζ2,ζ3)
+    else
+        _a_hs = @f(bmcs_hs_zero_v,_d)
+    end
+    return _a_hs
 end
 
 function a_disp(model::CKSAFTModel, V, T, z,_data = @f(data))
     _d, m̄, ζi, Σz = _data
     ζ0,ζ1,ζ2,ζ3 = ζi
-    ϵ̄ = @f(ū)
+    ϵ̄ = @f(ū,_data)
     η = ζ3
     τ = 0.74048
     D1 = CKSAFT_consts.D1
@@ -157,7 +162,7 @@ function ū(model::CKSAFTModel, V, T, z,_data = @f(data))
     c = ck_c(model)
     T⁻¹ = 1/T
     num = zero(V+T+first(z)+one(eltype(model)))
-    denom = zero(V+T+first(z)+one(eltype(model)))
+    denom = zero(T+first(z)+one(eltype(model)))
     for i in @comps
         ci,ϵii,mi,zi,di = c[i],ϵ[i,i],m[i],z[i],_d[i]
         cTi = 1 + ci*T⁻¹

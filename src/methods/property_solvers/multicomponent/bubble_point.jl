@@ -117,12 +117,13 @@ function extended_saturation_temperature(pure, p, _crit = nothing, volatile = tr
     #create initial point from critical values
     #we use a pseudo-saturation pressure extension,based on the slope at the critical point.
     
-    dlnpdTinv,logp0,Tcinv = __dlnPdTinvsat(pure,sat,crit,T,volatile,false)
-    lnp = logp0 + dlnpdTinv*(1/T - Tcinv)
-    p0 = exp(lnp)
-    vl0 = x0_volume(pure,p0,T,phase = :l)
-    vv0 = max(1.2*Vc,3*Rgas(pure)*T/Pc)
-    return p0,vl0,vv0
+    dlnpdTinv,logp0,Tcinv = __dlnPdTinvsat(pure,sat,crit,p,volatile,true)
+    #lnp = logp0 + dlnpdTinv*(1/T - Tcinv)
+    Tinv = (log(p) - logp0)/dlnpdTinv + Tcinv
+    T0  = 1/Tinv
+    vl0 = x0_volume(pure,p,T0,phase = :l)
+    vv0 = max(1.2*Vc,3*Rgas(pure)*T0/Pc)
+    return T0,vl0,vv0
 end
 
 
@@ -182,6 +183,8 @@ function __dlnPdTinvsat(pure,sat,crit,xx,in_media = true,is_sat_temperature = tr
         _p(_T) = pressure(pure,Vc,_T)
         dpdT = Solvers.derivative(_p,Tc)
         return -dpdT*Tc*Tc/Pc,log(Pc),1/Tc
+    elseif all(isnan,sat)# && all(isnan,crit)
+        return sat
     else
         throw(error("dPdTsat: unreachable state with $pure"))
     end
@@ -274,7 +277,7 @@ function bubble_pressure(model::EoSModel,T,x;kwargs...)
     return bubble_pressure(model, T, x, method)
 end
 
-function bubble_pressure(model::EoSModel, T, x, method::BubblePointMethod)
+function bubble_pressure(model::EoSModel, T, x, method::ThermodynamicMethod)
     x = x/sum(x)
     T = float(T)
     model_r,idx_r = index_reduction(model,x)
@@ -327,7 +330,7 @@ function __x0_bubble_temperature(model::EoSModel,p,x,Tx0 = nothing,volatiles = F
     return T0,vl0,vv0,y
 end
 
-function antoine_bubble_problem(dpdt,p_bubble,x,volatiles)  
+function antoine_bubble_problem(dpdt,p_bubble,x,volatiles = FillArrays.Fill(true,length(dpdt)))  
     function antoine_f0(T)
         p = zero(T+first(x)+first(dpdt)[1])
         for i in 1:length(dpdt)
@@ -338,7 +341,7 @@ function antoine_bubble_problem(dpdt,p_bubble,x,volatiles)
                 p += pᵢxᵢ
             end
         end
-        return p - p_bubble
+        return p/sum(x) - p_bubble
     end
     Tmin,Tmax = extrema(x -> 1/last(x),dpdt)
     return Roots.ZeroProblem(antoine_f0,(Tmin,Tmax))
@@ -420,7 +423,7 @@ function bubble_temperature(model::EoSModel, p , x, T0::Number)
     return bubble_temperature(model,p,x,method)
 end
 
-function bubble_temperature(model::EoSModel, p , x, method::BubblePointMethod)
+function bubble_temperature(model::EoSModel, p , x, method::ThermodynamicMethod)
     x = x/sum(x)
     p = float(p)
     model_r,idx_r = index_reduction(model,x)

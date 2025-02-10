@@ -136,7 +136,7 @@ function CPA(components;
     packagedparams = CPAParam(Mw, Tc, a, b, c1, epsilon_assoc, bondvol)
     
     #init cubic model
-    init_idealmodel = init_model(idealmodel,components,ideal_userlocations,verbose,reference_state)
+    init_idealmodel = init_model(idealmodel,components,ideal_userlocations,verbose)
     init_alpha = init_model(alpha,components,alpha_userlocations,verbose)
     init_mixing = init_model(mixing,components,activity,mixing_userlocations,activity_userlocations,verbose)
     init_translation = init_model(translation,components,translation_userlocations,verbose)
@@ -146,6 +146,7 @@ function CPA(components;
     references = ["10.1021/ie051305v"]
 
     model = CPA(_components, radial_dist, init_cubicmodel, packagedparams, sites, init_idealmodel, assoc_options, references)
+    set_reference_state!(model,reference_state;verbose)
     return model
 end
 
@@ -208,10 +209,25 @@ function crit_pure(model::CPAModel)
     end
 end
 
-function x0_sat_pure(model::CPAModel,T)
+function x0_sat_pure(model::CPAModel,T,crit = nothing)
     #use the cubic initial guess if we don't have association.
     cpa_is_pure_cubic(model) && x0_sat_pure(model.cubicmodel,T)
-    return x0_sat_pure_virial(model,T)
+    if crit === nothing
+        _,vl,vv = x0_sat_pure_virial(model,T)
+    else
+        _,vl,vv = x0_sat_pure_crit(model,T,crit)
+    end
+    return vl,vv
+end
+
+function x0_psat(model::CPAModel,T,crit = nothing)
+    cpa_is_pure_cubic(model) && x0_sat_pure(model.cubicmodel,T)
+    if crit === nothing
+        p,_,_ = x0_sat_pure_virial(model,T)
+    else
+        p,_,_ = x0_sat_pure_crit(model,T,crit)
+    end
+    return p
 end
 
 #=

@@ -1,3 +1,19 @@
+function PT_property(model,p,T,z,phase,threaded,vol0,f::F,::Val{UseP}) where {F,UseP}
+    if z isa Number
+        return PT_property(model,p,T,SA[z],phase,threaded,vol0,f,Val{UseP}())
+    end
+    V = volume(model, p, T, z; phase, threaded, vol0)
+    if UseP
+        return f(model,V,T,z,p)
+    else
+        return f(model,V,T,z)
+    end
+end
+
+function PT_property(model,p,T,z,phase,threaded,vol0,f::F) where F
+    PT_property(model,p,T,z,phase,threaded,vol0,f,Val{false}())
+end
+
 """
     entropy(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
 
@@ -13,8 +29,7 @@ Internally, it calls [`Clapeyron.volume`](@ref) to obtain `V` and calculates the
 The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume`](@ref) solver.
 """
 function entropy(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_entropy(model, V, T, z)
+    return PT_property(model,p,T,z,phase,threaded,vol0,VT_entropy)
 end
 
 """
@@ -32,8 +47,7 @@ Internally, it calls [`Clapeyron.volume`](@ref) to obtain `V` and calculates the
 The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume`](@ref) solver.
 """
 function entropy_res(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_entropy_res(model, V, T, z)
+    return PT_property(model,p,T,z,phase,threaded,vol0,VT_entropy_res)
 end
 
 """
@@ -51,8 +65,7 @@ Internally, it calls [`Clapeyron.volume`](@ref) to obtain `V` and calculates the
 The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume`](@ref) solver.
 """
 function chemical_potential(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_chemical_potential(model,V,T,z)
+    PT_property(model,p,T,z,phase,threaded,vol0,VT_chemical_potential)
 end
 
 """
@@ -70,8 +83,7 @@ Internally, it calls [`Clapeyron.volume`](@ref) to obtain `V` and calculates the
 The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume`](@ref) solver.
 """
 function chemical_potential_res(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_chemical_potential_res(model,V,T,z)
+    PT_property(model,p,T,z,phase,threaded,vol0,VT_chemical_potential_res)
 end
 
 """
@@ -89,8 +101,7 @@ Internally, it calls [`Clapeyron.volume`](@ref) to obtain `V` and calculates the
 The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume`](@ref) solver.
 """
 function internal_energy(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_internal_energy(model,V,T,z)
+    PT_property(model,p,T,z,phase,threaded,vol0,VT_internal_energy)
 end
 
 """
@@ -108,8 +119,7 @@ Internally, it calls [`Clapeyron.volume`](@ref) to obtain `V` and calculates the
 The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume`](@ref) solver.
 """
 function internal_energy_res(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_internal_energy_res(model,V,T,z)
+    PT_property(model,p,T,z,phase,threaded,vol0,VT_internal_energy_res_res)
 end
 
 """
@@ -127,8 +137,7 @@ Internally, it calls [`Clapeyron.volume`](@ref) to obtain `V` and calculates the
 The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume`](@ref) solver.
 """
 function enthalpy(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_enthalpy(model,V,T,z)
+    PT_property(model,p,T,z,phase,threaded,vol0,VT_enthalpy)
 end
 
 """
@@ -146,12 +155,12 @@ Internally, it calls [`Clapeyron.volume`](@ref) to obtain `V` and calculates the
 The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume`](@ref) solver.
 """
 function enthalpy_res(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_enthalpy_res(model,V,T,z)
+    PT_property(model,p,T,z,phase,threaded,vol0,VT_enthalpy_res)
 end
 
 """
     gibbs_free_energy(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
+    gibbs_energy(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
 
 Default units: `[J]`
 
@@ -165,15 +174,12 @@ Internally, it calls [`Clapeyron.volume`](@ref) to obtain `V` and calculates the
 The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume`](@ref) solver.
 """
 function gibbs_free_energy(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    A = eos(model,V,T,z)
-    return A + V*p
-    #return A - V*∂A∂V
-    #return VT_gibbs_free_energy(model,V,T,z)
+    PT_property(model,p,T,z,phase,threaded,vol0,VT_gibbs_free_energy,Val{true}())
 end
 
 """
     gibbs_free_energy_res(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
+    gibbs_energy_res(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
 
 Default units: `[J]`
 
@@ -187,12 +193,12 @@ Internally, it calls [`Clapeyron.volume`](@ref) to obtain `V` and calculates the
 The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume`](@ref) solver.
 """
 function gibbs_free_energy_res(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_gibbs_free_energy_res(model,V,T,z)
+    PT_property(model,p,T,z,phase,threaded,vol0,VT_gibbs_free_energy_res)
 end
 
 """
     helmholtz_free_energy(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
+    helmholtz_energy(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
 
 Default units: `[J]`
 
@@ -206,12 +212,12 @@ Internally, it calls [`Clapeyron.volume`](@ref) to obtain `V` and calculates the
 The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume`](@ref) solver.
 """
 function helmholtz_free_energy(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_helmholtz_free_energy(model,V,T,z)
+    PT_property(model,p,T,z,phase,threaded,vol0,VT_helmholtz_free_energy)
 end
 
 """
     helmholtz_free_energy_res(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
+    helmholtz_energy_res(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
 
 Default units: `[J]`
 
@@ -225,9 +231,13 @@ Internally, it calls [`Clapeyron.volume`](@ref) to obtain `V` and calculates the
 The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume`](@ref) solver.
 """
 function helmholtz_free_energy_res(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_helmholtz_free_energy_res(model,V,T,z)
+    PT_property(model,p,T,z,phase,threaded,vol0,VT_helmholtz_free_energy_res)
 end
+
+const helmholtz_energy = helmholtz_free_energy
+const helmholtz_energy_res = helmholtz_free_energy_res 
+const gibbs_energy = gibbs_free_energy
+const gibbs_energy_res = gibbs_free_energy_res
 
 """
     isochoric_heat_capacity(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
@@ -248,8 +258,7 @@ The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume
     This property requires at least second order ideal model temperature derivatives. If you are computing these properties, consider using a different ideal model than the `BasicIdeal` default (e.g. `EoS(["species"];idealmodel = ReidIdeal)`).
 """
 function isochoric_heat_capacity(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_isochoric_heat_capacity(model,V,T,z)
+    PT_property(model,p,T,z,phase,threaded,vol0,VT_isochoric_heat_capacity)
 end
 
 """
@@ -272,8 +281,7 @@ The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume
 
 """
 function isobaric_heat_capacity(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_isobaric_heat_capacity(model,V,T,z)
+    PT_property(model,p,T,z,phase,threaded,vol0,VT_isobaric_heat_capacity)
 end
 
 """
@@ -296,8 +304,7 @@ The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume
 
 """
 function adiabatic_index(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_adiabatic_index(model,V,T,z)
+    PT_property(model,p,T,z,phase,threaded,vol0,VT_adiabatic_index)
 end
 
 """
@@ -308,7 +315,7 @@ default units: `[Pa^-1]`
 Calculates the isothermal compressibility, defined as:
 
 ```julia
-κT = (V*∂p/∂V)^-1
+κT = -(V*∂p/∂V)^-1
 ```
 Internally, it calls [`Clapeyron.volume`](@ref) to obtain `V` and
 calculates the property via `VT_isothermal_compressibility(model,V,T,z)`.
@@ -316,8 +323,7 @@ calculates the property via `VT_isothermal_compressibility(model,V,T,z)`.
 The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume`](@ref) solver.
 """
 function isothermal_compressibility(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_isothermal_compressibility(model,V,T,z)
+    PT_property(model,p,T,z,phase,threaded,vol0,VT_isothermal_compressibility)
 end
 
 """
@@ -340,8 +346,7 @@ The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume
 
 """
 function isentropic_compressibility(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_isentropic_compressibility(model,V,T,z)
+    PT_property(model,p,T,z,phase,threaded,vol0,VT_isentropic_compressibility)
 end
 
 """
@@ -366,8 +371,7 @@ The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume
 
 """
 function speed_of_sound(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_speed_of_sound(model,V,T,z)
+    PT_property(model,p,T,z,phase,threaded,vol0,VT_speed_of_sound)
 end
 
 """
@@ -386,8 +390,7 @@ calculates the property via `VT_isobaric_expansivity(model,V,T,z)`.
 The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume`](@ref) solver.
 """
 function isobaric_expansivity(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_isobaric_expansivity(model,V,T,z)
+    PT_property(model,p,T,z,phase,threaded,vol0,VT_isobaric_expansivity)
 end
 
 """
@@ -410,8 +413,7 @@ The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume
 
 """
 function joule_thomson_coefficient(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_joule_thomson_coefficient(model,V,T,z)
+    PT_property(model,p,T,z,phase,threaded,vol0,VT_joule_thomson_coefficient)
 end
 
 """
@@ -428,6 +430,7 @@ Internally, it calls [`Clapeyron.volume`](@ref) to obtain `V` and calculates the
 The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume`](@ref) solver.
 """
 function identify_phase(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
+    #TODO: what do we do with composite models here?
     V = volume(model, p, T, z; phase, threaded, vol0)
     return VT_identify_phase(model,V,T,z)
 end
@@ -442,8 +445,7 @@ Internally, it calls [`Clapeyron.volume`](@ref) to obtain `V` and calculates the
 The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume`](@ref) solver.
 """
 function fundamental_derivative_of_gas_dynamics(model::EoSModel, p, T, z=SA[1.]; phase=:gas, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_fundamental_derivative_of_gas_dynamics(model,V,T,z)
+    PT_property(model,p,T,z,phase,threaded,vol0,VT_fundamental_derivative_of_gas_dynamics)
 end
 
 """
@@ -462,8 +464,7 @@ calculates the property via `VT_fugacity_coefficient(model,V,T,z)`.
 The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume`](@ref) solver.
 """
 function fugacity_coefficient(model::EoSModel,p,T,z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_fugacity_coefficient(model,V,T,z)
+    PT_property(model,p,T,z,phase,threaded,vol0,VT_fugacity_coefficient)
 end
 
 
@@ -643,9 +644,9 @@ Z = p*V(p)/R*T
 The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume`](@ref) solver.
 """
 function compressibility_factor(model::EoSModel, p, T, z=SA[1.]; phase=:unknown, threaded=true, vol0=nothing)
-    V = volume(model, p, T, z; phase, threaded, vol0)
-    R̄ = Rgas(model)
-    return p*V/(sum(z)*R̄*T)
+    #this property only depends on the implementation of volume_impl.
+    V = volume(model,p,T,z;phase,threaded,vol0)
+    return p*V/(sum(z)*Rgas(model)*T)
 end
 
 function inversion_temperature(model::EoSModel, p, z=SA[1.0]; phase=:unknown, threaded=true, vol0=nothing)
@@ -771,21 +772,62 @@ function gibbs_solvation(model::EoSModel, T; threaded=true, vol0=(nothing,nothin
     return -R̄*T*log(K)
 end
 
+"""
+    partial_property(model::EoSModel, p, T, z, property::X; phase=:unknown, threaded=true, vol0=nothing) where {X}
+
+Calculate the partial molar property of a mixture at specified temperature, pressure, mol amounts, and extensive property of interest.
+The equality `sum(z .* partial_property(model,p,T,z,property) - property(model,p,T,z))` should hold.
+    
+The keywords `phase`, `threaded` and `vol0` are passed to the [`Clapeyron.volume`](@ref) solver.
+"""
 function partial_property(model::EoSModel, p, T, z, property::ℜ; phase=:unknown, threaded=true, vol0=nothing) where {ℜ}
     V = volume(model, p, T, z; phase, threaded, vol0)
-    return VT_partial_property(model,V,T,z,property)
+    return _partial_property(model,V,T,z,PT_to_VT(property))
 end
 
-#special dispatch for volume here
-function VT_partial_property(model::EoSModel, V, T, z, ::typeof(volume))
-    _,dpdv = p∂p∂V(model,V,T,z)
-    dpdni = VT_partial_property(model, V, T, z, pressure)
-    return -dpdni ./ dpdv
+function _partial_property(model::EoSModel, V, T, z::AbstractVector, ::typeof(volume))
+    _,∂p∂V = p∂p∂V(model,V,T,z)
+    ∂p∂nᵢ = VT_molar_gradient(model, V, T, z, pressure)
+    return -∂p∂nᵢ ./ ∂p∂V
+end
+
+function _partial_property(model::EoSModel, V, T, z::AbstractVector, ::typeof(VT_gibbs_free_energy))
+    return VT_molar_gradient(model,V,T,z,eos)
+end
+
+function _partial_property(model::EoSModel, V, T, z::AbstractVector, VT_prop::F) where F
+    ∂x∂nᵢ = VT_molar_gradient(model,V,T,z,VT_prop)
+    #triple product rule:
+    #∂x∂nᵢ|p = ∂x∂nᵢ|V - ∂x∂V * ∂p∂nᵢ|V * ∂p∂V^-1
+    ∂p∂nᵢ = VT_molar_gradient(model,V,T,z,pressure)
+    xv(∂V) = VT_prop(model,∂V,T,z)
+    ∂x∂V = Solvers.derivative(xv,V)
+    _,∂p∂V = p∂p∂V(model,V,T,z)
+    return ∂x∂nᵢ .- ∂x∂V .* ∂p∂nᵢ ./ ∂p∂V
+end
+
+#default
+PT_to_VT(x) = x
+
+for (PTprop,VTprop) in [
+    (:entropy,:VT_entropy),
+    (:enthalpy,:VT_enthalpy),
+    (:internal_energy,:VT_internal_energy),
+    (:gibbs_free_energy,:VT_gibbs_free_energy),
+    (:helmholtz_free_energy,:VT_helmholtz_free_energy),
+    (:isochoric_heat_capacity,:VT_isochoric_heat_capacity),
+    (:isobaric_heat_capacity,:VT_isobaric_heat_capacity)
+    ]
+    @eval begin
+        PT_to_VT(::typeof($PTprop)) = $VTprop
+    end
 end
 
 #first derivative order properties
 export entropy, internal_energy, enthalpy, gibbs_free_energy, helmholtz_free_energy
 export entropy_res, internal_energy_res, enthalpy_res, gibbs_free_energy_res, helmholtz_free_energy_res
+export gibbs_energy,helmholtz_energy,gibbs_energy_res,helmholtz_energy_res
+
 #second derivative order properties
 export isochoric_heat_capacity, isobaric_heat_capacity,adiabatic_index
 export isothermal_compressibility, isentropic_compressibility, speed_of_sound
@@ -797,4 +839,45 @@ export mass_density,molar_density, compressibility_factor
 #molar gradient properties
 export chemical_potential, activity_coefficient, activity, aqueous_activity, fugacity_coefficient,reference_chemical_potential,reference_chemical_potential_type
 export chemical_potential_res
-export mixing, excess, gibbs_solvation
+export mixing, excess, gibbs_solvation, partial_property
+export identify_phase
+
+module PT
+    #first derivative order properties
+    using Clapeyron: entropy, internal_energy, enthalpy, gibbs_free_energy, helmholtz_free_energy
+    using Clapeyron: entropy_res, internal_energy_res, enthalpy_res, gibbs_free_energy_res, helmholtz_free_energy_res
+    #second derivative order properties
+    using Clapeyron: isochoric_heat_capacity, isobaric_heat_capacity,adiabatic_index
+    using Clapeyron: isothermal_compressibility, isentropic_compressibility, speed_of_sound
+    using Clapeyron: isobaric_expansivity, joule_thomson_coefficient, inversion_temperature
+    #higher derivative order properties
+    using Clapeyron: fundamental_derivative_of_gas_dynamics
+    #volume properties
+    using Clapeyron: mass_density,molar_density, compressibility_factor
+    using Clapeyron: identify_phase
+    import Clapeyron
+    pressure(model, p, T, z=Clapeyron.SA[1.]; phase=:unknown, threaded=true, vol0=nothing) = p
+    temperature(model, p, T, z=Clapeyron.SA[1.]; phase=:unknown, threaded=true, vol0=nothing) = T
+    function flash(model,p,T,z = Clapeyron.SA[1.0],args...;kwargs...)
+        return Clapeyron.tp_flash2(model,p,T,z,args...;kwargs...)
+    end
+end
+
+"""
+    supports_lever_rule(::f)::Bool
+
+returns `true` if the input property function can be used to describe multiphase mixtures using the lever rule:
+```
+f(a)/f(b) = (f - f(b))/f(a) - f(b))
+```
+"""
+supports_lever_rule(f) = false
+
+for prop in [:volume, :pressure, :entropy, :internal_energy, :enthalpy, :gibbs_free_energy, :helmholtz_free_energy,
+    :entropy_res, :internal_energy_res, :enthalpy_res, :gibbs_free_energy_res, :helmholtz_free_energy_res,
+   #volume :properties
+    :mass_density,:molar_density]
+    @eval begin
+        supports_lever_rule(::typeof($prop)) = true
+    end
+end

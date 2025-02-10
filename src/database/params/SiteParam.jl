@@ -71,9 +71,6 @@ struct SiteParam <: ClapeyronParam
     site_translator::Union{Nothing,Vector{Vector{NTuple{2,Int}}}}
 end
 
-
-
-
 function SiteParam(components::Vector{String},sites::Array{Array{String,1},1},n_sites::Vector{Vector{Int}},sourcecsvs = String[],site_translator = nothing)
     n_sites = PackedVectorsOfVectors.pack(n_sites)
     param = SiteParam(components, 
@@ -322,7 +319,7 @@ function gc_to_comp_sites(param::AssocParam,sites::SiteParam)
     new_val = assoc_similar(sites,eltype(param))
     for i in 1:length(sites.components)
         site_translator_i = site_translator[i]
-        for j in 1:i
+        for j in 1:length(sites.components)
             ij_pair = new_val[i,j]
             #display(TextDisplay(stdout),MIME"text/plain"(),ij_pair)
             site_translator_j = site_translator[j]
@@ -332,11 +329,15 @@ function gc_to_comp_sites(param::AssocParam,sites::SiteParam)
                 for b in 1:length(site_translator_j)
                     j_gc,b_gc = site_translator_j[b]
                     #absolute index, relative to the Compressed4DMatrix
-                    idx = validindex(ij_pair,a,b)
-                    if idx != 0 #if the index is valid
-                        ijab_val = param[i_gc,j_gc][a_gc,b_gc]
-                        if !_iszero(ijab_val) #if the value is not zero
-                            ij_pair.values.values[idx] =ijab_val
+                    idx = validindex(ij_pair,a,b,false)
+                    if idx != 0
+                        ijab1 = param[i_gc,j_gc]
+                        idx_ijab = validindex(ijab1,a_gc,b_gc,false)
+                        if idx_ijab != 0
+                            ijab_val = ijab1.values.values[idx_ijab]
+                            if !_iszero(ijab_val) #if the value is not zero
+                                ij_pair.values.values[idx] =ijab_val
+                            end
                         end
                     end
                 end
